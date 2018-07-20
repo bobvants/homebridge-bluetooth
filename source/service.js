@@ -45,56 +45,56 @@ function BluetoothService(log, config, prefix) {
         new BluetoothCharacteristic(this.log, characteristicConfig, this.prefix);
   }
 
-  this.homebridgeService = null;
-  this.nobleService = null;
+  // this.homebridgeService = null;
+  // this.nobleService = null;
 }
 
 
-BluetoothService.prototype.connect = function (nobleService, homebridgeService) {
-  this.log.info(this.prefix, "Connected");
-  this.log.debug(this.prefix, "Service." + this.type + " (" + this.UUID + ")");
-  this.homebridgeService = homebridgeService;
-
-  this.nobleService = nobleService;
-  this.nobleService.discoverCharacteristics([], this.discoverCharacteristics.bind(this));
-};
-
-
-BluetoothService.prototype.discoverCharacteristics = function (error, nobleCharacteristics) {
-  if (error) {
-    this.log.error(this.prefix, "Discover characteristics failed | " + error);
-    return;
-  }
-  if (nobleCharacteristics.length == 0) {
-    this.log.warn(this.prefix, "No characteristics discovered");
-    return;
-  }
-
-  for (var nobleCharacteristic of nobleCharacteristics) {
-    var characteristicUUID = trimUUID(nobleCharacteristic.uuid);
-    var bluetoothCharacteristic = this.bluetoothCharacteristics[characteristicUUID];
-    if (!bluetoothCharacteristic) {
-      this.log.debug(this.prefix, "Ignored | Characteristic (" + nobleCharacteristic.uuid + ")");
-      continue;
-    }
-
-    var homebridgeCharacteristic =
-        this.homebridgeService.getCharacteristic(bluetoothCharacteristic.class);
-    bluetoothCharacteristic.connect(nobleCharacteristic, homebridgeCharacteristic);
-  }
-};
+// BluetoothService.prototype.connect = function (nobleService, homebridgeService) {
+//   this.log.info(this.prefix, "Connected");
+//   this.log.debug(this.prefix, "Service." + this.type + " (" + this.UUID + ")");
+//   this.homebridgeService = homebridgeService;
+//
+//   this.nobleService = nobleService;
+//   this.nobleService.discoverCharacteristics([], this.discoverCharacteristics.bind(this));
+// };
 
 
-BluetoothService.prototype.disconnect = function () {
-  for (var characteristicUUID in this.bluetoothCharacteristics) {
-    this.bluetoothCharacteristics[characteristicUUID].disconnect();
-  }
-  if (this.nobleCharacteristic && this.homebridgeCharacteristic) {
-    this.homebridgeService = null;
-    this.nobleService = null;
-    this.log.info(this.prefix, "Disconnected");
-  }
-};
+// BluetoothService.prototype.discoverCharacteristics = function (error, nobleCharacteristics) {
+//   if (error) {
+//     this.log.error(this.prefix, "Discover characteristics failed | " + error);
+//     return;
+//   }
+//   if (nobleCharacteristics.length == 0) {
+//     this.log.warn(this.prefix, "No characteristics discovered");
+//     return;
+//   }
+//
+//   for (var nobleCharacteristic of nobleCharacteristics) {
+//     var characteristicUUID = trimUUID(nobleCharacteristic.uuid);
+//     var bluetoothCharacteristic = this.bluetoothCharacteristics[characteristicUUID];
+//     if (!bluetoothCharacteristic) {
+//       this.log.debug(this.prefix, "Ignored | Characteristic (" + nobleCharacteristic.uuid + ")");
+//       continue;
+//     }
+//
+//     var homebridgeCharacteristic =
+//         this.homebridgeService.getCharacteristic(bluetoothCharacteristic.class);
+//     bluetoothCharacteristic.connect(nobleCharacteristic, homebridgeCharacteristic);
+//   }
+// };
+
+
+// BluetoothService.prototype.disconnect = function () {
+//   for (var characteristicUUID in this.bluetoothCharacteristics) {
+//     this.bluetoothCharacteristics[characteristicUUID].disconnect();
+//   }
+//   if (this.nobleCharacteristic && this.homebridgeCharacteristic) {
+//     this.homebridgeService = null;
+//     this.nobleService = null;
+//     this.log.info(this.prefix, "Disconnected");
+//   }
+// };
 
 
 function trimUUID(uuid) {

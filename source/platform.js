@@ -105,13 +105,7 @@ BluetoothPlatform.prototype.connect = function (error, nobleAccessory) {
     return;
   }
 
-  var accessoryAddress = trimAddress(nobleAccessory.address);
-
-  //
-  //
-  // var bluetoothAccessory = this.bluetoothAccessories[accessoryAddress];
-  // var homebridgeAccessory = this.cachedHomebridgeAccessories[accessoryAddress];
-
+  this.log.info("Connected | " + nobleAccessory.advertisement.localName + " (" + nobleAccessory.address + ")");
 
   for (var id of Object.keys(this.bluetoothAccessories)) {
     var bluetoothAccessory = this.bluetoothAccessories[id];
@@ -124,24 +118,113 @@ BluetoothPlatform.prototype.connect = function (error, nobleAccessory) {
                                                      [homebridgeAccessory]);
 
       bluetoothAccessory.homebridgeAccessory = homebridgeAccessory;
-    } //else {
-      // delete this.cachedHomebridgeAccessories[accessoryAddress];
-    //}
-    bluetoothAccessory.connect(nobleAccessory);
+    }
+
+    bluetoothAccessory.homebridgeAccessory.on('identify', bluetoothAccessory.identification.bind(this));
+
+
   }
 
+  nobleAccessory.once('disconnect', this.disconnect.bind(this));
 
-  nobleAccessory.once('disconnect', function (error) {
-    //this.disconnect(nobleAccessory, error);
+  nobleAccessory.discoverServices([], this.discoverServices.bind(this));
 
-    Noble.startScanning([], false);
-
-  }.bind(this));
-
-  // if (Object.keys(this.cachedHomebridgeAccessories).length > 0) {
-  //   Noble.startScanning([], false);
-  // }
 };
+
+BluetoothPlatform.prototype.disconnect = function (nobleAccessory, error ) {
+  if (error) {
+    this.log.error("Disconnecting failed | " + nobleAccessory.advertisement.localName + " (" + nobleAccessory.address + ") | " + error);
+  }
+
+  nobleAccessory.removeAllListeners();
+
+  for (var id of Object.keys(this.bluetoothAccessories)) {
+    var bluetoothAccessory = this.bluetoothAccessories[id];
+
+    if (bluetoothAccessory) {
+      bluetoothAccessory.homebridgeAccessory.removeAllListeners('identify');
+    }
+
+    for (var serviceUUID in bluetoothAccessory.bluetoothServices) {
+      var bluetoothServices = bluetoothAccessory.bluetoothServices[serviceUUID];
+
+      if (bluetoothServices) {
+        for (var characteristicUUID in bluetoothServices.bluetoothCharacteristics) {
+          bluetoothServices.bluetoothCharacteristics[characteristicUUID].disconnect();
+        }
+      }
+    }
+  }
+
+  Noble.startScanning([], false);
+};
+
+BluetoothPlatform.prototype.discoverServices = function (error, nobleServices) {
+
+  if (error) {
+    this.log.error("Discover services failed | " + error);
+    return;
+  }
+  if (nobleServices.length == 0) {
+    this.log.warn("No services discovered");
+    return;
+  }
+
+  for (var nobleService of nobleServices) {
+    var serviceUUID = trimUUID(nobleService.uuid);
+    var isMyService = false;
+
+    for (var id of Object.keys(this.bluetoothAccessories)) {
+      var bluetoothAccessory = this.bluetoothAccessories[id];
+
+      var bluetoothService = bluetoothAccessory.bluetoothServices[serviceUUID];
+
+      if (bluetoothService) {
+        var homebridgeService = bluetoothAccessory.homebridgeAccessory.getService(bluetoothService.class);
+        isMyService = true;
+
+        if (!homebridgeService) {
+          bluetoothAccessory.homebridgeAccessory.addService(bluetoothService.class, bluetoothService.name);
+        }
+      }
+    }
+
+    if (isMyService) {
+      nobleService.discoverCharacteristics([], this.discoverCharacteristics.bind(this));
+    }
+  }
+};
+
+BluetoothPlatform.prototype.discoverCharacteristics = function (error, nobleCharacteristics) {
+  if (error) {
+    this.log.error("Discover characteristics failed | " + error);
+    return;
+  }
+
+  if (nobleCharacteristics.length == 0) {
+    this.log.warn("No characteristics discovered");
+    return;
+  }
+
+  for (var nobleCharacteristic of nobleCharacteristics) {
+    var characteristicUUID = trimUUID(nobleCharacteristic.uuid);
+
+    for (var id of Object.keys(this.bluetoothAccessories)) {
+      var bluetoothAccessory = this.bluetoothAccessories[id];
+
+      for (var serviceUUID of Object.keys(bluetoothAccessory.bluetoothServices)) {
+        var bluetoothServices = bluetoothAccessory.bluetoothServices[serviceUUID]
+        var bluetoothCharacteristic = bluetoothServices.bluetoothCharacteristics[characteristicUUID];
+
+        if (bluetoothCharacteristic) {
+          var homebridgeCharacteristic = this.homebridgeService.getCharacteristic(bluetoothCharacteristic.class);
+          bluetoothCharacteristic.connect(nobleCharacteristic, homebridgeCharacteristic);
+        }
+      }
+    }
+  }
+};
+
 
 
 // BluetoothPlatform.prototype.disconnect = function (nobleAccessory, error) {
@@ -154,4 +237,8 @@ BluetoothPlatform.prototype.connect = function (error, nobleAccessory) {
 
 function trimAddress(address) {
   return address.toLowerCase().replace(/:/g, "");
+}
+
+function trimUUID(uuid) {
+  return uuid.toLowerCase().replace(/:/g, "").replace(/-/g, "");
 }
