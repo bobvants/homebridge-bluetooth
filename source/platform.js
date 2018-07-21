@@ -93,7 +93,7 @@ BluetoothPlatform.prototype.discover = function (nobleAccessory) {
   this.log.debug("Discovered | " + nobleAccessory.advertisement.localName +
                 " (" + nobleAccessory.address + ") | RSSI " + nobleAccessory.rssi + "dB");
   nobleAccessory.connect(function (error) {
-    this.connect(error, nobleAccessory)
+    this.connect(error, nobleAccessory);
   }.bind(this));
 };
 
@@ -125,16 +125,17 @@ BluetoothPlatform.prototype.connect = function (error, nobleAccessory) {
 
   }
 
-  nobleAccessory.once('disconnect', this.disconnect.bind(this));
+  nobleAccessory.once('disconnect', function () {
+    this.disconnect( nobleAccessory);
+  }.bind(this));
 
   nobleAccessory.discoverServices([], this.discoverServices.bind(this));
 
 };
 
-BluetoothPlatform.prototype.disconnect = function (nobleAccessory, error ) {
-  if (error) {
-    this.log.error("Disconnecting failed | " + nobleAccessory.advertisement.localName + " (" + nobleAccessory.address + ") | " + error);
-  }
+BluetoothPlatform.prototype.disconnect = function ( nobleAccessory ) {
+
+  this.log.warn("Disconnected | " + nobleAccessory.advertisement.localName + " (" + nobleAccessory.address + ")");
 
   nobleAccessory.removeAllListeners();
 
@@ -165,6 +166,7 @@ BluetoothPlatform.prototype.discoverServices = function (error, nobleServices) {
     this.log.error("Discover services failed | " + error);
     return;
   }
+
   if (nobleServices.length == 0) {
     this.log.warn("No services discovered");
     return;
@@ -180,8 +182,9 @@ BluetoothPlatform.prototype.discoverServices = function (error, nobleServices) {
       var bluetoothService = bluetoothAccessory.bluetoothServices[serviceUUID];
 
       if (bluetoothService) {
-        var homebridgeService = bluetoothAccessory.homebridgeAccessory.getService(bluetoothService.class);
         isMyService = true;
+
+        var homebridgeService = bluetoothAccessory.homebridgeAccessory.getService(bluetoothService.class);
 
         if (!homebridgeService) {
           bluetoothAccessory.homebridgeAccessory.addService(bluetoothService.class, bluetoothService.name);
@@ -208,17 +211,25 @@ BluetoothPlatform.prototype.discoverCharacteristics = function (error, nobleChar
 
   for (var nobleCharacteristic of nobleCharacteristics) {
     var characteristicUUID = trimUUID(nobleCharacteristic.uuid);
+    var isMyCharacteristic = false;
 
     for (var id of Object.keys(this.bluetoothAccessories)) {
       var bluetoothAccessory = this.bluetoothAccessories[id];
 
       for (var serviceUUID of Object.keys(bluetoothAccessory.bluetoothServices)) {
-        var bluetoothServices = bluetoothAccessory.bluetoothServices[serviceUUID]
-        var bluetoothCharacteristic = bluetoothServices.bluetoothCharacteristics[characteristicUUID];
+        var bluetoothService = bluetoothAccessory.bluetoothServices[serviceUUID]
+
+        var bluetoothCharacteristic = bluetoothService.bluetoothCharacteristics[characteristicUUID];
 
         if (bluetoothCharacteristic) {
-          var homebridgeCharacteristic = this.homebridgeService.getCharacteristic(bluetoothCharacteristic.class);
-          bluetoothCharacteristic.connect(nobleCharacteristic, homebridgeCharacteristic);
+          isMyCharacteristic = true;
+
+          var homebridgeService = bluetoothAccessory.homebridgeAccessory.getService(bluetoothService.class);
+
+          if (homebridgeService) {
+            var homebridgeCharacteristic = homebridgeService.getCharacteristic(bluetoothCharacteristic.class);
+            bluetoothCharacteristic.connect(nobleCharacteristic, homebridgeCharacteristic);
+          }
         }
       }
     }
