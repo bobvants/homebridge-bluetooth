@@ -40,8 +40,15 @@ function BluetoothService(log, config, prefix) {
   this.log.debug(this.prefix, "Initialized | Service." + this.type + " (" + this.UUID + ")");
   this.bluetoothCharacteristics = {};
   for (var characteristicConfig of config.characteristics) {
-    var characteristicUUID = trimUUID(characteristicConfig.UUID);
-    this.bluetoothCharacteristics[characteristicUUID] =
+    var id;
+
+    if (characteristicConfig.UUID) {
+      id = trimUUID(characteristicConfig.UUID);
+    } else {
+      id = characteristicConfig.type;
+    }
+
+    this.bluetoothCharacteristics[id] =
         new BluetoothCharacteristic(this.log, characteristicConfig, this.prefix);
   }
 

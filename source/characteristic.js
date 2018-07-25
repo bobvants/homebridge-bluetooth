@@ -22,10 +22,11 @@ function BluetoothCharacteristic(log, config, prefix) {
   }
   this.class = Characteristic[this.type]; // For example - Characteristic.Brightness
 
-  if (!config.UUID) {
-    throw new Error(this.prefix + " Missing mandatory config 'UUID'");
+  if (config.UUID) {
+    this.UUID = config.UUID;
+  } else {
+    this.constant = config.constant;
   }
-  this.UUID = config.UUID;
 
   this.log.debug(this.prefix, "Initialized | Characteristic." + this.type + " (" + this.UUID + ")");
 
@@ -35,9 +36,16 @@ function BluetoothCharacteristic(log, config, prefix) {
 
 
 BluetoothCharacteristic.prototype.connect = function (nobleCharacteristic, homebridgeCharacteristic) {
+  this.homebridgeCharacteristic = homebridgeCharacteristic;
+
+  if (this.constant) {
+    this.log.debug(this.prefix, "Characteristic." + this.type + " = " + this.constant);
+    return;
+  }
+
+
   this.log.info(this.prefix, "Connected");
   this.log.debug(this.prefix, "Characteristic." + this.type + " (" + this.UUID + ")");
-  this.homebridgeCharacteristic = homebridgeCharacteristic;
 
   this.nobleCharacteristic = nobleCharacteristic;
 
@@ -86,6 +94,11 @@ BluetoothCharacteristic.prototype.connect = function (nobleCharacteristic, homeb
 
 
 BluetoothCharacteristic.prototype.get = function (callback) {
+  if (this.constant) {
+    callback(null, this.constant);
+    return;
+  }
+
   this.nobleCharacteristic.read(function (error, buffer) {
     if (error) {
       this.log.warn(this.prefix, "Read from bluetooth characteristic failed | " + error);
