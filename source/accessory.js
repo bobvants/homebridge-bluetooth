@@ -31,7 +31,8 @@ function BluetoothAccessory(log, config) {
   this.bluetoothServices = {};
   for (var serviceConfig of config.services) {
     var serviceUUID = trimUUID(serviceConfig.UUID);
-    this.bluetoothServices[serviceUUID] = new BluetoothService(this.log, serviceConfig,
+    var id = serviceConfig.type.toLowerCase() + ":" + serviceUUID
+    this.bluetoothServices[id] = new BluetoothService(this.log, serviceConfig,
                                                                this.prefix);
   }
 

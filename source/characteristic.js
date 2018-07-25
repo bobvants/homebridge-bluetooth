@@ -40,6 +40,18 @@ BluetoothCharacteristic.prototype.connect = function (nobleCharacteristic, homeb
   this.homebridgeCharacteristic = homebridgeCharacteristic;
 
   this.nobleCharacteristic = nobleCharacteristic;
+
+
+  if (this.UUID == "2A29" || this.UUID == "2A24" || this.UUID == "2A25" ) {
+    this.log.debug("System Info", this.UUID );
+
+    this.get(function(error, value) {
+      if (value) {
+        homebridgeCharacteristic.updateValue(value, null, this);
+      }
+    })
+  }
+
   for (var permission of this.homebridgeCharacteristic.props['perms']) {
     switch (permission) {
       case Characteristic.Perms.READ:
