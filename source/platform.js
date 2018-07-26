@@ -192,7 +192,7 @@ BluetoothPlatform.prototype.discoverServices = function (error, nobleServices) {
           var homebridgeService = bluetoothAccessory.homebridgeAccessory.getService(bluetoothService.class);
 
           if (!homebridgeService) {
-            bluetoothAccessory.homebridgeAccessory.addService(bluetoothService.class, bluetoothService.name);
+            homebridgeService = bluetoothAccessory.homebridgeAccessory.addService(bluetoothService.class, bluetoothService.name);
           }
 
           //constant characteristic

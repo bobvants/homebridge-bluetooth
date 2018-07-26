@@ -187,7 +187,11 @@ BluetoothCharacteristic.prototype.fromBuffer = function (buffer) {
       value = buffer.readFloatLE(0);
       break;
     case Characteristic.Formats.STRING: // BLECharacteristic
-      value = buffer.toString('utf8', 0);
+      if (trimUUID(this.UUID) == "2a15") {
+        value = buffer.toString('hex', 0);
+      } else {
+        value = buffer.toString('utf8', 0);
+      }
       break;
     case Characteristic.Formats.UINT8: // BLEUnsignedCharCharacteristic
       value = buffer.readUInt8(0);
@@ -227,3 +231,7 @@ BluetoothCharacteristic.prototype.disconnect = function () {
     this.log.info(this.prefix, "Disconnected");
   }
 };
+
+function trimUUID(uuid) {
+  return uuid.toLowerCase().replace(/:/g, "").replace(/-/g, "");
+}
