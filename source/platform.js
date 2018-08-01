@@ -11,7 +11,6 @@ module.exports = function (noble, uuidGen, service, accessory, characteristic, b
   return BluetoothPlatform;
 };
 
-
 function BluetoothPlatform(log, config, homebridgeAPI) {
   this.log = log;
 
@@ -79,23 +78,28 @@ BluetoothPlatform.prototype.discover = function (nobleAccessory) {
 
   for (var id of Object.keys(this.bluetoothAccessories)) {
     var bluetoothAccessory = this.bluetoothAccessories[id];
-    if (bluetoothAccessory.address === accessoryAddress) {
+    if (trimAddress(bluetoothAccessory.address) == accessoryAddress) {
       isMyDevice = true;
       break;
     }
   }
 
-  if (!isMyDevice) {
+  if (isMyDevice) {
+    this.log.debug("======= Discovered | " + nobleAccessory.advertisement.localName +
+                  " (" + nobleAccessory.address + ") | RSSI " + nobleAccessory.rssi + "dB");
+
+    const self = this;
+
+    setTimeout(function() {
+      nobleAccessory.connect(function (error) {
+        self.connect(error, nobleAccessory);
+      }.bind(self));
+    }, 5000);
+  }
+  else {
     this.log.debug("Ignored | " + nobleAccessory.advertisement.localName +
                   " (" + nobleAccessory.address + ") | RSSI " + nobleAccessory.rssi + "dB");
-    return;
   }
-
-  this.log.debug("Discovered | " + nobleAccessory.advertisement.localName +
-                " (" + nobleAccessory.address + ") | RSSI " + nobleAccessory.rssi + "dB");
-  nobleAccessory.connect(function (error) {
-    this.connect(error, nobleAccessory);
-  }.bind(this));
 };
 
 
@@ -177,11 +181,18 @@ BluetoothPlatform.prototype.discoverServices = function (error, nobleServices) {
   for (var nobleService of nobleServices) {
     this.log.debug("Discovered service | " + nobleService.uuid );
 
+    this.log.debug("XXXXXXXX Discovered service | ", nobleService._peripheralId );
+
+    var peripheralId = trimUUID(nobleService._peripheralId);
     var serviceUUID = trimUUID(nobleService.uuid);
     var isMyService = false;
 
     for (var id of Object.keys(this.bluetoothAccessories)) {
       var bluetoothAccessory = this.bluetoothAccessories[id];
+
+      if (peripheralId != trimAddress(bluetoothAccessory.address)) {
+        continue;
+      }
 
       for (var serviceID of Object.keys(bluetoothAccessory.bluetoothServices)) {
         var bluetoothService = bluetoothAccessory.bluetoothServices[serviceID];
@@ -228,11 +239,16 @@ BluetoothPlatform.prototype.discoverCharacteristics = function (error, nobleChar
   for (var nobleCharacteristic of nobleCharacteristics) {
     this.log.debug("Discovered characteristic | " + nobleCharacteristic.uuid );
 
+    var peripheralId = trimUUID(nobleCharacteristic._peripheralId);
     var characteristicUUID = trimUUID(nobleCharacteristic.uuid);
     var isMyCharacteristic = false;
 
     for (var id of Object.keys(this.bluetoothAccessories)) {
       var bluetoothAccessory = this.bluetoothAccessories[id];
+
+      if (peripheralId != trimAddress(bluetoothAccessory.address)) {
+        continue;
+      }
 
       for (var serviceID of Object.keys(bluetoothAccessory.bluetoothServices)) {
         var bluetoothService = bluetoothAccessory.bluetoothServices[serviceID];

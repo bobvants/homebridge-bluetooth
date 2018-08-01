@@ -105,6 +105,10 @@ BluetoothCharacteristic.prototype.get = function (callback) {
       callback(error, null);
       return
     }
+
+
+    this.log.info(this.prefix, "Get | " + this.UUID);
+
     var value = this.fromBuffer(buffer);
     this.log.info(this.prefix, "Get | " + value);
     callback(null, value);
@@ -187,7 +191,7 @@ BluetoothCharacteristic.prototype.fromBuffer = function (buffer) {
       value = buffer.readFloatLE(0);
       break;
     case Characteristic.Formats.STRING: // BLECharacteristic
-      if (trimUUID(this.UUID) == "2a15") {
+      if (trimUUID(this.UUID) == "2a25") {
         value = buffer.toString('hex', 0);
       } else {
         value = buffer.toString('utf8', 0);
