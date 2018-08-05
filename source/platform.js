@@ -56,20 +56,47 @@ BluetoothPlatform.prototype.configureAccessory = function (homebridgeAccessory) 
 
 BluetoothPlatform.prototype.didFinishLaunching = function () {
   Noble.on('stateChange', this.stateChange.bind(this));
+  Noble.on('discover', this.discover.bind(this));
 };
 
 
 BluetoothPlatform.prototype.stateChange = function (state) {
   if (state != 'poweredOn') {
     this.log.info("Stopped | " + state);
+    clearInterval(this.interval)
     Noble.stopScanning();
+    return;
   }
 
   this.log.info("Started | " + state);
-  Noble.startScanning([], false);
-  Noble.on('discover', this.discover.bind(this));
+  this.scan()
+
+  const self = this;
+  clearInterval(this.interval);
+  this.interval = setInterval(function() {
+    self.scan();
+  },10000);
 };
 
+BluetoothPlatform.prototype.scan = function () {
+  let b = false;
+  for (var id of Object.keys(this.bluetoothAccessories)) {
+    var bluetoothAccessory = this.bluetoothAccessories[id];
+    if (!bluetoothAccessory.isConnected) {
+      this.log.debug(bluetoothAccessory.name, " is not connected |||")
+      b = true;
+      break;
+    }
+  }
+
+  if (b) {
+    Noble.startScanning([], false);
+  } else {
+    this.log.debug("||| all connected |||")
+    clearInterval(this.interval);
+    Noble.stopScanning();
+  }
+}
 
 BluetoothPlatform.prototype.discover = function (nobleAccessory) {
   var accessoryAddress = trimAddress(nobleAccessory.address);
@@ -90,11 +117,10 @@ BluetoothPlatform.prototype.discover = function (nobleAccessory) {
 
     const self = this;
 
-    setTimeout(function() {
-      nobleAccessory.connect(function (error) {
-        self.connect(error, nobleAccessory);
-      }.bind(self));
-    }, 5000);
+    Noble.stopScanning();
+    nobleAccessory.connect(function (error) {
+      self.connect(error, nobleAccessory);
+    }.bind(self));
   }
   else {
     this.log.debug("Ignored | " + nobleAccessory.advertisement.localName +
@@ -112,8 +138,18 @@ BluetoothPlatform.prototype.connect = function (error, nobleAccessory) {
 
   this.log.info("Connected | " + nobleAccessory.advertisement.localName + " (" + nobleAccessory.address + ")");
 
+  var peripheralId = trimUUID(nobleAccessory.address);
+
+
+
   for (var id of Object.keys(this.bluetoothAccessories)) {
     var bluetoothAccessory = this.bluetoothAccessories[id];
+
+    if (peripheralId != trimAddress(bluetoothAccessory.address)) {
+      continue
+    }
+
+    bluetoothAccessory.isConnected = true;
 
     if (!bluetoothAccessory.homebridgeAccessory) {
       var homebridgeAccessory = new Accessory(bluetoothAccessory.name,
@@ -126,8 +162,6 @@ BluetoothPlatform.prototype.connect = function (error, nobleAccessory) {
     }
 
     bluetoothAccessory.homebridgeAccessory.on('identify', bluetoothAccessory.identification.bind(this));
-
-
   }
 
   nobleAccessory.once('disconnect', function () {
@@ -135,7 +169,6 @@ BluetoothPlatform.prototype.connect = function (error, nobleAccessory) {
   }.bind(this));
 
   nobleAccessory.discoverServices([], this.discoverServices.bind(this));
-
 };
 
 BluetoothPlatform.prototype.disconnect = function ( nobleAccessory ) {
@@ -144,8 +177,16 @@ BluetoothPlatform.prototype.disconnect = function ( nobleAccessory ) {
 
   nobleAccessory.removeAllListeners();
 
+  var peripheralId = trimUUID(nobleAccessory.address);
+
   for (var id of Object.keys(this.bluetoothAccessories)) {
     var bluetoothAccessory = this.bluetoothAccessories[id];
+
+    if (peripheralId != trimAddress(bluetoothAccessory.address)) {
+      continue
+    }
+
+    bluetoothAccessory.isConnected = false;
 
     if (bluetoothAccessory) {
       bluetoothAccessory.homebridgeAccessory.removeAllListeners('identify');
@@ -163,7 +204,8 @@ BluetoothPlatform.prototype.disconnect = function ( nobleAccessory ) {
     }
   }
 
-  Noble.startScanning([], false);
+  //Noble.startScanning([], false);
+  this.scan();
 };
 
 BluetoothPlatform.prototype.discoverServices = function (error, nobleServices) {
