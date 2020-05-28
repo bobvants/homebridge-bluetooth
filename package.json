@@ -21,7 +21,7 @@
     "homebridge": ">=0.4.6"
   },
   "dependencies": {
-    "@abandonware/noble": ">=1.9.2",
+    "@abandonware/noble": "=1.9.2-9",
     "chalk": ">=1.1.1"
   }
 }
